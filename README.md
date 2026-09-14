@@ -240,6 +240,11 @@ volume = { name = "hpm-data", mount = "/app/data" }
 
 会话 Cookie 默认 `sameSite=lax` 且仅在反向代理提供 HTTPS 时标记为 `Secure`。**推荐前后端使用同一注册域的不同子域**（例如 `app.example.com` 与 `api.example.com`，二者属 same-site，`lax` Cookie 可正常发送）。若前端与后端分属不同注册域，则 `lax` Cookie 不会被发送——此时应使用同域子域方案，或后续将 Cookie 改为 `sameSite=none; Secure`（本版未实现，建议优先采用同域子域）。
 
+## 相关文档
+
+- **[部署指南](部署指南.md)** —— 一步步把 HousePlusMail 部署上云（推荐组合 B：Cloudflare Pages + Cloudflare Containers，含单实例 Docker 备用方案、环境变量表、排错）。
+- **[使用说明](使用说明.md)** —— 面向使用者的完整手册：登录、添加邮件账户（含 Gmail/QQ/163/Outlook 的 IMAP/SMTP 与授权码说明）、收发与回复转发、附件、多设备、安全备份与已知限制。
+
 ## 与 meowmail 的差异
 
 为聚焦"多邮件管理器"这一核心目标，HousePlusMail 移除了 meowmail 中的 AI 助手、CalDAV 日历、通讯录、收件规则自动化、MCP 服务、通知推送等模块，仅保留账户管理、IMAP 收发、SMTP 发送与基础会话安全。
