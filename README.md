@@ -103,40 +103,82 @@ cd web && npm run dev    # Vite 开发服务器，API 已代理到 8080
 
 HousePlusMail 由「有状态后端 + 静态前端」组成，可按两种形态部署。
 
-### 1. 源码托管（GitHub）
-
-本仓库即为完整源码，可直接 `git init` / `git remote add` / `git push` 到你的 GitHub：
-
-```bash
-git init
-git add -A
-git commit -m "Initial HousePlusMail"
-git remote add origin git@github.com:YOUR/REPO.git
-git push -u origin main
-```
-
-### 2. 单实例部署（最简单）
+### 1. 单实例部署（最简单）
 
 前后端同进程、同端口（前端由后端直接托管 `server/public`）。适合任意带持久文件系统的主机：
 
-- **Docker**（已提供 `Dockerfile`）：挂载 `/app/data` 卷保存数据，设置好环境变量后用 `docker run -p 8080:8080 -v $(pwd)/data:/app/data ...` 启动。
-- **裸机 / VPS**：`npm install` 前后端 → `npm run build`（前端）→ `cd server && npm start`。
+- **Docker**（已提供 `Dockerfile`）：挂载 `/app/data` 卷保存数据，设置好环境变量后启动：
 
-### 3. 拆分部署（前端静态托管 + 后端有状态服务）
-
-适合「前端放 Vercel / Cloudflare Pages，后端另跑」：
-
-- **前端** → Vercel 或 Cloudflare Pages：构建时注入 `VITE_API_BASE`（需包含 `/api/v1` 前缀）指向后端地址。
-
-  ```
-  # web/.env（或平台的环境变量）
-  VITE_API_BASE=https://api.yourdomain.com/api/v1
+  ```bash
+  docker build -t houseplusmail .
+  docker run -d --name hpm -p 8080:8080 \
+    -v $(pwd)/data:/app/data \
+    -e HPM_BOOTSTRAP_ADMIN_USERNAME=admin \
+    -e HPM_BOOTSTRAP_ADMIN_PASSWORD='改成强密码' \
+    houseplusmail
   ```
 
-  然后 `npm run build`，将 `web/dist`（即 `server/public`）作为静态站点发布。
-- **后端** → Railway / Render / Fly.io / 任意 VPS / Cloudflare Containers（使用现有 Dockerfile）。
+- **裸机 / VPS**：
 
-  > ⚠️ 后端**不能**跑在纯 Serverless 上（Vercel Functions / Cloudflare Workers）：它需要持久化文件系统（`data/store.json`、`vault.key`）以及长生命周期的 IMAP/SMTP TCP 连接，而 Serverless 不保证这两者。
+  ```bash
+  cd web && npm install && npm run build && cd ..
+  cd server && npm install && npm start
+  ```
+
+### 2. 拆分部署（前端静态托管 + 后端有状态服务）
+
+适合「前端放 Vercel / Cloudflare Pages，后端另跑」。无论哪家风前/后端，核心三件事：
+1. 前端构建时注入 `VITE_API_BASE=https://<后端地址>/api/v1`；
+2. 后端设置 `HPM_CORS_ORIGIN=https://<前端地址>`；
+3. 前后端用**同一注册域的不同子域**（如 `app.example.com` + `api.example.com`）以避免跨域 Cookie 问题。
+
+> ⚠️ 后端**不能**跑在纯 Serverless 上（Vercel Functions / Cloudflare Workers）：它需要持久化文件系统（`data/store.json`、`vault.key`）以及长生命周期的 IMAP/SMTP TCP 连接，而 Serverless 不保证这两者。
+
+#### 推荐组合
+
+- **最省事、各层最佳（默认推荐）**：前端 **Vercel** + 后端 **Railway**。Vercel 对 Vite/SPA 几乎零配置；Railway 对「Docker + 持久盘」最省心、最稳，适合这种长期运行、需要可靠存储的自用服务。
+- **单厂商、Cookie 最省心**：前端 **Cloudflare Pages** + 后端 **Cloudflare Containers**。前后端同处 Cloudflare，同域子域（`app` / `api`）配置最简单；代价是 Containers 较新、状态持久化成熟度略低。
+- **预算敏感**：可用 **Render** 替代 Railway（免费档即可；本项目连接为「按需建连」而非长空闲连接，休眠唤醒的冷启动可接受）。
+- **不推荐 Fly.io**：多区域基础设施能力超出本项目所需，配置更重，性价比不高。
+
+#### 2.1 前端 → Vercel
+
+在 Vercel 导入本仓库，设置：
+- **Root Directory**：`web`
+- **Build Command**：`npm install && npx vite build --outDir dist`
+- **Output Directory**：`dist`
+- **Environment Variable**：`VITE_API_BASE=https://<你的后端地址>/api/v1`
+
+#### 2.2 前端 → Cloudflare Pages
+
+在 Cloudflare Pages 创建项目并连接本仓库，设置：
+- **构建目录（根目录）**：`web`
+- **构建命令**：`npm install && npx vite build --outDir dist`
+- **构建输出目录**：`dist`
+- **环境变量**：`VITE_API_BASE=https://<你的后端地址>/api/v1`
+
+#### 2.3 后端 → Railway
+
+1. 新建 Project → Deploy from GitHub repo `JACKHU0006/HousePlusMail`（或你自己的 fork）。
+2. 选择 **Deploy a Dockerfile**（仓库根目录已包含）。
+3. Variables 中添加：
+   - `HPM_BIND=0.0.0.0:8080`
+   - `HPM_BOOTSTRAP_ADMIN_USERNAME` / `HPM_BOOTSTRAP_ADMIN_PASSWORD`（强密码）
+   - `HPM_CORS_ORIGIN=https://<你的前端地址>`
+4. 在 Volume 中挂一块持久盘到 `/app/data`（Railway 会自动映射 `HPM_DATA_DIR=/app/data`）。
+
+#### 2.4 后端 → Render
+
+1. New → Web Service → 连接本仓库。
+2. Runtime 选 **Docker**（使用仓库 Dockerfile）。
+3. 在 Environment 中添加上面同样的变量；在 **Disk** 中挂载 `/app/data` 持久盘。
+4. 生成 `*.onrender.com` 地址，把它填进前端的 `VITE_API_BASE` 与 `HPM_CORS_ORIGIN`。
+
+#### 2.5 后端 → Fly.io / 任意 VPS / Cloudflare Containers
+
+- Fly.io：`fly launch`（自动识别 Dockerfile）→ `fly volumes create hpm_data --size 1` → 在 `fly.toml` 中把 `/app/data` 挂到该卷 → `fly deploy`。
+- Cloudflare Containers：直接部署仓库 Dockerfile，挂持久存储到 `/app/data`，对外暴露 8080。
+- 自有 VPS：同「单实例部署」的 Docker 命令，前置 Nginx/Caddy 反代并配置 HTTPS 即可。
 
 ### 关键环境变量
 
@@ -144,7 +186,7 @@ git push -u origin main
 | --- | --- | --- |
 | `VITE_API_BASE` | 前端（构建时） | API 基址，含 `/api/v1`；单端口部署留空（默认相对路径） |
 | `HPM_CORS_ORIGIN` | 后端 | 拆分部署时允许的前端来源，逗号分隔或 `*` |
-| `HPM_BIND` / `HPM_DATA_DIR` | 后端 | 监听地址 / 数据目录 |
+| `HPM_BIND` / `HPM_DATA_DIR` | 后端 | 监听地址 / 数据目录（Dockerfile 已设为 `0.0.0.0:8080` / `/app/data`） |
 | `HPM_AUTH_MODE` | 后端 | `local`（本版仅实现 local） |
 | `HPM_BOOTSTRAP_ADMIN_USERNAME/PASSWORD` | 后端 | 首次启动创建的管理员 |
 | `HPM_VAULT_SECRET` | 后端 | 固定保险库密钥（可选，备份时需与数据一起保管） |
