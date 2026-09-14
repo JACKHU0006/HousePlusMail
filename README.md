@@ -136,12 +136,54 @@ HousePlusMail 由「有状态后端 + 静态前端」组成，可按两种形态
 
 #### 推荐组合
 
-- **最省事、各层最佳（默认推荐）**：前端 **Vercel** + 后端 **Railway**。Vercel 对 Vite/SPA 几乎零配置；Railway 对「Docker + 持久盘」最省心、最稳，适合这种长期运行、需要可靠存储的自用服务。
-- **单厂商、Cookie 最省心**：前端 **Cloudflare Pages** + 后端 **Cloudflare Containers**。前后端同处 Cloudflare，同域子域（`app` / `api`）配置最简单；代价是 Containers 较新、状态持久化成熟度略低。
+> 本仓库采用 **组合 B（Cloudflare 单厂商）**：前端 Cloudflare Pages + 后端 Cloudflare Containers。前后端同处 Cloudflare、同注册域，Cookie 同站、部署最省心。详见下方「3. 本仓库推荐部署」。
+
+- **单厂商、Cookie 最省心（本仓库采用）**：前端 **Cloudflare Pages** + 后端 **Cloudflare Containers**。前后端同处 Cloudflare，同域子域（`app` / `api`）配置最简单；代价是 Containers 较新、状态持久化成熟度略低。
+- **最省事、各层最佳（备选）**：前端 **Vercel** + 后端 **Railway**。Vercel 对 Vite/SPA 几乎零配置；Railway 对「Docker + 持久盘」最省心、最稳，适合这种长期运行、需要可靠存储的自用服务。
 - **预算敏感**：可用 **Render** 替代 Railway（免费档即可；本项目连接为「按需建连」而非长空闲连接，休眠唤醒的冷启动可接受）。
 - **不推荐 Fly.io**：多区域基础设施能力超出本项目所需，配置更重，性价比不高。
 
-#### 2.1 前端 → Vercel
+#### 2.0 推荐路径：Cloudflare Pages + Cloudflare Containers（同域部署）
+
+前后端都放在 Cloudflare、使用同一注册域的两个子域，Cookie 同站、部署与运维最省心：
+
+```
+app.yourdomain.com   ── Cloudflare Pages        （静态前端，构建时注入 VITE_API_BASE）
+api.yourdomain.com   ── Cloudflare Containers    （Docker 后端，持久卷挂 /app/data）
+       两者同属 yourdomain.com → same-site，会话 Cookie 可正常跨子域发送
+```
+
+**① 前端（Pages）**
+1. Cloudflare 控制台 → Workers & Pages → 创建 **Pages** 项目 → 连接 GitHub 仓库 `JACKHU0006/HousePlusMail`。
+2. 构建设置：构建目录 `web`；构建命令 `npm install && npx vite build --outDir dist`；输出目录 `dist`；环境变量 `VITE_API_BASE=https://api.yourdomain.com/api/v1`。
+3. 部署后在「自定义域」绑定 `app.yourdomain.com`。
+
+**② 后端（Containers）**
+> Cloudflare Containers 目前为 Beta，控制台流程可能变化，以下为要点，具体以 Cloudflare 当前文档为准。
+
+1. Cloudflare 控制台 → **Containers** → 新建容器，选择本仓库根目录的 `Dockerfile`。
+2. 配置：监听端口 `8080`（Dockerfile 已 `EXPOSE 8080`）；挂持久卷到 `/app/data`（存放 `store.json` 与 `vault.key`）；环境变量：
+   - `HPM_BIND=0.0.0.0:8080`
+   - `HPM_BOOTSTRAP_ADMIN_USERNAME` / `HPM_BOOTSTRAP_ADMIN_PASSWORD`（请改强密码）
+   - `HPM_CORS_ORIGIN=https://app.yourdomain.com`
+3. 部署后在「自定义域」绑定 `api.yourdomain.com`。
+
+示意 `wrangler.toml`（以 Cloudflare 当前文档为准）：
+
+```toml
+name = "houseplusmail"
+pages_build = { dir = "web/dist" }
+[[containers]]
+name = "hpm-backend"
+image = { dockerfile = "Dockerfile" }
+port = 8080
+volume = { name = "hpm-data", mount = "/app/data" }
+```
+
+**③ DNS 与 Cookie**
+在 Cloudflare DNS 中为 `app` 与 `api` 各加一条记录指向各自的部署（绑定自定义域时通常会自动配置 CNAME）。两个子域同属 `yourdomain.com`，`sameSite=lax` 的会话 Cookie 即可在前后端间正常发送，多设备登录无碍。
+
+#### 2.1 前端 → Vercel（备选）
 
 在 Vercel 导入本仓库，设置：
 - **Root Directory**：`web`
