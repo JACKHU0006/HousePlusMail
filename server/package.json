@@ -1,0 +1,29 @@
+{
+  "name": "houseplusmail-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "HousePlusMail - 自托管、多用户、多邮件账户的 Web 邮件客户端（仅邮件管理）",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "dev": "tsx watch src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cookie": "^1.0.2",
+    "express": "^4.21.2",
+    "imapflow": "^1.0.170",
+    "mailparser": "^3.7.1",
+    "nodemailer": "^6.10.0",
+    "socks": "^2.8.4"
+  },
+  "devDependencies": {
+    "@types/cookie": "^1.0.0",
+    "@types/express": "^4.17.21",
+    "@types/mailparser": "^3.4.5",
+    "@types/node": "^22.10.0",
+    "@types/nodemailer": "^6.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
