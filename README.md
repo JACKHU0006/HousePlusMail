@@ -136,14 +136,16 @@ HousePlusMail 由「有状态后端 + 静态前端」组成，可按两种形态
 
 #### 推荐组合
 
-> 本仓库采用 **组合 B（Cloudflare 单厂商）**：前端 Cloudflare Pages + 后端 Cloudflare Containers。前后端同处 Cloudflare、同注册域，Cookie 同站、部署最省心。详见下方「3. 本仓库推荐部署」。
+> 本仓库采用 **Cloudflare Pages（前端）+ Railway（后端）**：前端免费托管、后端常驻且自带持久盘，适合长期自用。Cloudflare Containers 需升级 **Workers Paid 付费计划**（常驻会持续计费），故作为备选。
 
-- **单厂商、Cookie 最省心（本仓库采用）**：前端 **Cloudflare Pages** + 后端 **Cloudflare Containers**。前后端同处 Cloudflare，同域子域（`app` / `api`）配置最简单；代价是 Containers 较新、状态持久化成熟度略低。
-- **最省事、各层最佳（备选）**：前端 **Vercel** + 后端 **Railway**。Vercel 对 Vite/SPA 几乎零配置；Railway 对「Docker + 持久盘」最省心、最稳，适合这种长期运行、需要可靠存储的自用服务。
+- **长期稳定、性价比首选（本仓库采用）**：前端 **Cloudflare Pages** + 后端 **Railway**。Pages 免费托管静态前端；Railway 对「Docker + 持久盘」最省心、最稳，适合长期运行、需要可靠存储的自用服务。
+- **单厂商、Cookie 最省心（备选）**：前端 **Cloudflare Pages** + 后端 **Cloudflare Containers**。前后端同处 Cloudflare，同域子域（`app` / `api`）配置最简单；但 Containers 需 Workers Paid 付费，且较新、状态持久化成熟度略低。
 - **预算敏感**：可用 **Render** 替代 Railway（免费档即可；本项目连接为「按需建连」而非长空闲连接，休眠唤醒的冷启动可接受）。
 - **不推荐 Fly.io**：多区域基础设施能力超出本项目所需，配置更重，性价比不高。
 
 #### 2.0 推荐路径：Cloudflare Pages + Cloudflare Containers（同域部署）
+
+> ⚠️ **Cloudflare Containers 需要 Workers Paid 付费计划**，常驻会产生按量费用。若希望免费/低成本且长期常驻，推荐改用 **Railway**（见 §2.3）——本仓库实际采用的即 Cloudflare Pages + Railway。
 
 前后端都放在 Cloudflare、使用同一注册域的两个子域，Cookie 同站、部署与运维最省心：
 
@@ -208,6 +210,8 @@ volume = { name = "hpm-data", mount = "/app/data" }
    - `HPM_BOOTSTRAP_ADMIN_USERNAME` / `HPM_BOOTSTRAP_ADMIN_PASSWORD`（强密码）
    - `HPM_CORS_ORIGIN=https://<你的前端地址>`
 4. 在 Volume 中挂一块持久盘到 `/app/data`（Railway 会自动映射 `HPM_DATA_DIR=/app/data`）。
+5. 部署后在 Railway **Settings → Domains** 添加自定义域 `api.hpmail.cowu.cc`，并把 Cloudflare DNS 中 `api` 的 CNAME 指向 Railway 提供的目标。
+6. 本项目采用示例：前端 `VITE_API_BASE=https://api.hpmail.cowu.cc/api/v1`，后端 `HPM_CORS_ORIGIN=https://app.hpmail.cowu.cc`。
 
 #### 2.4 后端 → Render
 
