@@ -210,8 +210,8 @@ volume = { name = "hpm-data", mount = "/app/data" }
    - `HPM_BOOTSTRAP_ADMIN_USERNAME` / `HPM_BOOTSTRAP_ADMIN_PASSWORD`（强密码）
    - `HPM_CORS_ORIGIN=https://<你的前端地址>`
 4. 在 Volume 中挂一块持久盘到 `/app/data`（Railway 会自动映射 `HPM_DATA_DIR=/app/data`）。
-5. 部署后在 Railway **Settings → Domains** 添加自定义域 `api.hpmail.cowu.cc`，并把 Cloudflare DNS 中 `api` 的 CNAME 指向 Railway 提供的目标。
-6. 本项目采用示例：前端 `VITE_API_BASE=https://api.hpmail.cowu.cc/api/v1`，后端 `HPM_CORS_ORIGIN=https://app.hpmail.cowu.cc`。
+5. 部署后在 Railway **Settings → Domains** 添加自定义域 `api.ccwu.cc`，并在 `ccwu.cc` 的 DNS（dnshe.org）里把 `api` 的 CNAME 指向 Railway 提供的目标。
+6. 本项目采用示例：前端地址 `hpmail.ccwu.cc`，后端地址 `api.ccwu.cc`；故 `VITE_API_BASE=https://api.ccwu.cc/api/v1`，`HPM_CORS_ORIGIN=https://hpmail.ccwu.cc`。
 
 #### 2.4 后端 → Render
 
