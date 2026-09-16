@@ -37,8 +37,16 @@ export function configFromEnv(): Config {
   const regRaw = (process.env.HPM_REGISTRATION_ENABLED ?? "true").toLowerCase();
   const registrationEnabled = regRaw !== "false" && regRaw !== "0" && authMode !== "oidc";
 
+  // 监听地址：优先 HPM_BIND；若平台注入了 PORT（Render / 多数 PaaS 会注入），
+  // 则端口以 PORT 为准（主机仍用 HPM_BIND 的主机部分，默认 0.0.0.0）。
+  let bind = str("HPM_BIND", "0.0.0.0:8080");
+  if (process.env.PORT) {
+    const host = bind.includes(":") ? bind.slice(0, bind.lastIndexOf(":")) : "0.0.0.0";
+    bind = `${host}:${process.env.PORT}`;
+  }
+
   return {
-    bind: str("HPM_BIND", "0.0.0.0:8080"),
+    bind,
     dataDir,
     authMode,
     bootstrapAdmin,

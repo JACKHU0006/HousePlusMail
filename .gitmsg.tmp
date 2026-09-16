@@ -1,0 +1,6 @@
+fix: 后端兼容平台注入的 PORT（Render 部署必需）
+
+- server/src/config.ts：若进程环境存在 PORT（Render / 多数 PaaS 注入），
+  bind 的端口以 PORT 为准，否则 Render 健康检查 probing 8080 会失败、部署被判失败。
+- 部署指南 §3 强化为复制粘贴清单：列出完整 env 表、Health Check Path、
+  Disk 512MB 挂 /app/data、自定义域 api.ccwu.cc 与 DNS 步骤，并注明 PORT 优先。
