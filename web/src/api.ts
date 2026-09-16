@@ -9,6 +9,12 @@ import type {
   SessionResponse,
 } from "./types";
 
+export interface AuthConfig {
+  localEnabled: boolean;
+  oidcEnabled: boolean;
+  registrationEnabled: boolean;
+}
+
 // 单端口部署时留空，使用相对路径 /api/v1；
 // 拆分部署（前端托管在 Vercel / Cloudflare Pages）时，
 // 在构建期通过 VITE_API_BASE 注入后端地址，需包含 /api/v1 前缀，
@@ -41,9 +47,11 @@ async function req<T = any>(method: string, url: string, body?: unknown): Promis
 export const api = {
   health: () => req("GET", "/health"),
   session: () => req<SessionResponse>("GET", "/session"),
-  authConfig: () => req("GET", "/auth/config"),
+  authConfig: () => req<AuthConfig>("GET", "/auth/config"),
   login: (username: string, password: string) =>
     req<SessionResponse>("POST", "/auth/login", { username, password }),
+  register: (username: string, password: string) =>
+    req<SessionResponse>("POST", "/auth/register", { username, password }),
   logout: () => req("POST", "/auth/logout"),
 
   listAccounts: () => req<MailAccount[]>("GET", "/accounts"),

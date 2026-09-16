@@ -1,7 +1,7 @@
-import crypto from "node:crypto";
+import crypto, { randomUUID } from "node:crypto";
 import { Request, Response, NextFunction } from "express";
 import { serialize, parse as parseCookie } from "cookie";
-import { randomToken, verifyPassword } from "./security.js";
+import { randomToken, verifyPassword, hashPassword } from "./security.js";
 import { getContext } from "./context.js";
 import type { User } from "./types.js";
 
@@ -197,6 +197,50 @@ export async function handleLogout(req: Request, res: Response): Promise<void> {
   res.status(204).end();
 }
 
+export async function handleRegister(req: Request, res: Response): Promise<void> {
+  const { username, password } = req.body ?? {};
+  if (typeof username !== "string" || typeof password !== "string") {
+    throw AppError.validation("用户名与密码均为必填");
+  }
+  const name = username.trim();
+  const pass = password;
+  if (name.length < 3 || name.length > 128) {
+    throw AppError.validation("用户名长度需在 3-128 个字符之间");
+  }
+  if (!/^[a-zA-Z0-9_.-]+$/.test(name)) {
+    throw AppError.validation("用户名仅允许字母、数字、下划线、点(.)与连字符(-)");
+  }
+  if (pass.length < 8 || pass.length > 4096) {
+    throw AppError.validation("密码长度需在 8-4096 个字符之间");
+  }
+
+  const { store, sessions, config } = getContext();
+  if (!config.registrationEnabled) {
+    throw AppError.forbidden("当前已关闭开放注册，请联系管理员");
+  }
+  if (store.getUserByName(name)) {
+    throw AppError.conflict("该用户名已被注册");
+  }
+
+  const now = Date.now();
+  const user: User = {
+    id: randomUUID(),
+    username: name,
+    passwordHash: hashPassword(pass),
+    role: "user",
+    hasPin: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await store.upsertUser(user);
+  console.log(`新用户注册成功：${user.username}（角色：user）`);
+
+  // 注册后直接建立会话，免去再次登录。
+  const { token, csrfToken } = sessions.create(user.id);
+  res.setHeader("Set-Cookie", sessionCookie(token, isHttps(req)));
+  res.json(sessionResponse(csrfToken, user));
+}
+
 export async function handleSession(req: Request, res: Response): Promise<void> {
   const info = requireSession(req);
   const user = getContext().store.getUserById(info.userId);
@@ -227,5 +271,6 @@ export function authConfigResponse() {
   return {
     localEnabled: config.authMode !== "oidc",
     oidcEnabled: config.authMode === "oidc" || config.authMode === "hybrid",
+    registrationEnabled: config.registrationEnabled,
   };
 }

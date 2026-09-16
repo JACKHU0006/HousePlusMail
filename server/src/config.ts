@@ -8,6 +8,8 @@ export interface Config {
   bootstrapAdmin?: { username: string; password: string };
   vaultSecret?: string;
   corsOrigin?: string;
+  /** 是否允许开放自助注册（POST /auth/register）。默认开启；可设 HPM_REGISTRATION_ENABLED=false 关闭。 */
+  registrationEnabled: boolean;
 }
 
 function str(name: string, fallback: string): string {
@@ -30,11 +32,17 @@ export function configFromEnv(): Config {
       ? { username, password }
       : undefined;
 
+  // 开放自助注册：默认开启；设 HPM_REGISTRATION_ENABLED=false 关闭。
+  // OIDC-only 模式下本地账户无意义，注册恒为关闭。
+  const regRaw = (process.env.HPM_REGISTRATION_ENABLED ?? "true").toLowerCase();
+  const registrationEnabled = regRaw !== "false" && regRaw !== "0" && authMode !== "oidc";
+
   return {
     bind: str("HPM_BIND", "0.0.0.0:8080"),
     dataDir,
     authMode,
     bootstrapAdmin,
     vaultSecret: process.env.HPM_VAULT_SECRET,
+    registrationEnabled,
   };
 }

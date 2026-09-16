@@ -33,6 +33,13 @@ body {
 }
 .login-card h1 { margin: 0; font-size: 22px; }
 .login-card input { padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+.auth-tabs { display: flex; gap: 8px; }
+.auth-tabs button {
+  flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: 8px;
+  background: #fff; cursor: pointer; font-size: 14px;
+}
+.auth-tabs button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.muted.small { font-size: 12px; margin: 0; }
 
 /* 通用控件 */
 input, select, textarea {

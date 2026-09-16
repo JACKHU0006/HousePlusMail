@@ -1,0 +1,9 @@
+feat: 开放自助注册（POST /auth/register + 注册页面）
+
+- 后端新增 POST /auth/register：校验用户名(3-128 位, 仅字母/数字/_/./-)、
+  密码(>=8 位)，查重后写入独立 user 账户(role=user)并自动建立会话。
+- 新增 HPM_REGISTRATION_ENABLED（默认 true，OIDC 模式恒为 false），
+  可在 /auth/config 暴露 registrationEnabled 供前端决定是否显示注册页。
+- 前端登录页增加「登录/注册」标签页，注册成功后直接登录；
+  含确认密码校验与基础样式。
+- 更新 .env.example / 使用说明.md / 部署指南.md。

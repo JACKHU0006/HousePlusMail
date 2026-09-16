@@ -8,6 +8,7 @@ import {
   handleLogin,
   handleLogout,
   handleSession,
+  handleRegister,
   authConfigResponse,
   authRead,
 } from "./auth.js";
@@ -56,6 +57,7 @@ export function buildApp(publicDir?: string, corsOrigin?: string) {
   api.get("/auth/config", (_req, res) => res.json(authConfigResponse()));
   api.get("/session", authRead, wrap(handleSession));
   api.post("/auth/login", wrap(handleLogin));
+  api.post("/auth/register", wrap(handleRegister));
   api.post("/auth/logout", wrap(handleLogout));
 
   api.use("/accounts", accountsRouter);

@@ -31,6 +31,7 @@ export default function App() {
   const [showCompose, setShowCompose] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [registrationEnabled, setRegistrationEnabled] = useState(false);
   const [messageLimit, setMessageLimit] = useState(50);
   const [messageTotal, setMessageTotal] = useState(0);
   const [composeInitial, setComposeInitial] = useState<ComposeInit | null>(null);
@@ -52,6 +53,12 @@ export default function App() {
         setCsrf(s.csrfToken);
       } catch {
         /* 未登录 */
+      }
+      try {
+        const cfg = await api.authConfig();
+        setRegistrationEnabled(cfg.registrationEnabled);
+      } catch {
+        /* 忽略配置获取失败 */
       }
       setLoading(false);
     })();
@@ -133,7 +140,12 @@ export default function App() {
 
   if (loading) return <div className="centered">加载中…</div>;
   if (!user)
-    return <LoginPage onLogin={(u, c) => { setUser(u); setCsrf(c); }} />;
+    return (
+      <LoginPage
+        registrationEnabled={registrationEnabled}
+        onLogin={(u, c) => { setUser(u); setCsrf(c); }}
+      />
+    );
 
   const currentAccount = accounts.find((a) => a.id === selectedAccount);
 
@@ -269,9 +281,17 @@ export default function App() {
   );
 }
 
-function LoginPage({ onLogin }: { onLogin: (u: PublicUser, csrf: string) => void }) {
+function LoginPage({
+  registrationEnabled,
+  onLogin,
+}: {
+  registrationEnabled: boolean;
+  onLogin: (u: PublicUser, csrf: string) => void;
+}) {
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -280,6 +300,17 @@ function LoginPage({ onLogin }: { onLogin: (u: PublicUser, csrf: string) => void
     setBusy(true);
     setError(null);
     try {
+      if (mode === "register") {
+        if (password !== confirm) {
+          setError("两次输入的密码不一致");
+          setBusy(false);
+          return;
+        }
+        const s = await api.register(username, password);
+        setCsrf(s.csrfToken);
+        onLogin(s.user, s.csrfToken);
+        return;
+      }
       const s = await api.login(username, password);
       setCsrf(s.csrfToken);
       onLogin(s.user, s.csrfToken);
@@ -290,11 +321,38 @@ function LoginPage({ onLogin }: { onLogin: (u: PublicUser, csrf: string) => void
     }
   };
 
+  const switchMode = (m: "login" | "register") => {
+    setMode(m);
+    setError(null);
+    setPassword("");
+    setConfirm("");
+  };
+
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
         <h1>HousePlusMail</h1>
         <p className="muted">自托管 · 多用户 · 多邮件账户</p>
+
+        <div className="auth-tabs">
+          <button
+            type="button"
+            className={mode === "login" ? "active" : ""}
+            onClick={() => switchMode("login")}
+          >
+            登录
+          </button>
+          {registrationEnabled && (
+            <button
+              type="button"
+              className={mode === "register" ? "active" : ""}
+              onClick={() => switchMode("register")}
+            >
+              注册
+            </button>
+          )}
+        </div>
+
         <input
           placeholder="用户名"
           value={username}
@@ -307,10 +365,21 @@ function LoginPage({ onLogin }: { onLogin: (u: PublicUser, csrf: string) => void
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+        {mode === "register" && (
+          <input
+            placeholder="确认密码"
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+          />
+        )}
         {error && <div className="banner error">{error}</div>}
         <button className="primary" type="submit" disabled={busy}>
-          {busy ? "登录中…" : "登录"}
+          {busy ? (mode === "register" ? "注册中…" : "登录中…") : mode === "register" ? "注册并登录" : "登录"}
         </button>
+        {mode === "register" && (
+          <p className="muted small">注册即创建独立账户，仅能管理你自己的邮箱账号。</p>
+        )}
       </form>
     </div>
   );
